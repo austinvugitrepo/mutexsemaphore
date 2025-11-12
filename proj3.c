@@ -21,9 +21,12 @@ int main( int argc, char *argv[] ) {  // accepting command args here
  sem_t empsem;          // for the mutex and semaphore
  sem_t fullsem;
  
- 
+ pthread_mutex_init( &mutex, NULL);  //initialization
+ sem_init(&empsem, 0, BUFFER_SIZE);
+ sem_init(&fullsem, 0, 0);
 
-
+ pthread_create(&prodcer, NULL, prodthr, NULL); //creating producer and consimer threads
+ pthread_create(&consmer, NULL, consthr, NULL);
 
 
 }
