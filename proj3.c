@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <string.h>
 
 char **arg;
 int totalargs;
@@ -49,28 +50,43 @@ sem_post(&empsem);
 }
 
 
-
-
-
-
-
-bool buffer_remove_item( buffer_item *item );
-
 int main( int argc, char *argv[] ) {  // accepting command args here
+ 
+ bool buffshow; 
 
  arg = &argv[1]; // to ignore executable name
  totalargs = argc - 1;  
  
- pthread_t prodcer; // for the producer and consumer threads
- pthread_t consmer;
+ int simtime = atoi(arg[0]);
+ int maxsleep = atoi(arg[1]);  // turn command args (strings) to integers
+ int prodnum = atoi(arg[2]);   // number of producer threads
+ int consnum = atoi(arg[3]);   // number of consumer threads
+ 
+ if (strcmp(arg[4], "yes") == 0) {
+   buffshow = true;
+ } 
+ else if (strcmp(arg[4], "no") == 0) {    // this section compares argument string
+   buffshow = false;
+ }
+ else {
+   fprintf(stderr, "for last argument must be yes or no\n");
+   exit(1);
+ }
+ 
+
+ pthread_t prodcer[prodnum]; // for the producer and consumer threads
+ pthread_t consmer[consnum];
  
  pthread_mutex_init( &mutex, NULL);  //initialization
  sem_init(&empsem, 0, BUFFER_SIZE);
  sem_init(&fullsem, 0, 0);
 
- pthread_create(&prodcer, NULL, prodthr, NULL); //creating producer and consumer threads
+for(int i = 0; i < prodnum; i++){
+ pthread_create(&prodcer, NULL, prodthr, NULL);
+ } //creating producer and consumer threads
+for(int i = 0; i < consnum; i++){
  pthread_create(&consmer, NULL, consthr, NULL);
- 
+}
  pthread_join(prodcer, NULL); //threads end here
  pthread_join(consmer, NULL);
 
