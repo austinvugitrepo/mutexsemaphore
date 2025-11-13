@@ -1,6 +1,8 @@
 #ifndef _BUFFER_H_DEFINED_
 #define _BUFFER_H_DEFINED_
 
+#include <stdbool.h> // we are working with bools
+
 typedef int buffer_item;
 
 #define BUFFER_SIZE 5

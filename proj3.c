@@ -27,7 +27,9 @@ int main( int argc, char *argv[] ) {  // accepting command args here
 
  pthread_create(&prodcer, NULL, prodthr, NULL); //creating producer and consimer threads
  pthread_create(&consmer, NULL, consthr, NULL);
-
+ 
+ pthread_join(prodcer, NULL); //threads end here
+ pthread_join(consmer, NULL);
 
 }
 
