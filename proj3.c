@@ -6,6 +6,7 @@
 #include <semaphore.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdint.h>
 
 
 char **arg;
@@ -43,7 +44,8 @@ int empcount; // check to see how many empty slots
 sem_getvalue(&empsem, &empcount);
 
 if(empcount == 0){ // if full
-  printf("All buffers full. Producer %lu waits.\n", pthread_self());
+  printf("All buffers full. Producer %p waits.\n", (void*)pthread_self());
+  fbuffertime++;
 }
 sem_wait(&empsem);  //acquiring the mutex and semaphore
 pthread_mutex_lock(&mutex);
@@ -63,7 +65,8 @@ int fullcount; // check to see how many full slots
 sem_getvalue(&fullsem, &fullcount);
 
 if(fullcount == 0){ // if empty
-  printf("All buffers empty. Consumer %lu waits.\n", pthread_self());
+  printf("All buffers empty. Consumer %p waits.\n", (void*)pthread_self());
+  ebuffertime++;
 }
 sem_wait(&fullsem);  //acquiring the mutex and semaphore
 pthread_mutex_lock(&mutex);
@@ -136,11 +139,11 @@ int main( int argc, char *argv[] ) {  // accepting command args here
    exit(1);
  }
  
- totalnumprod = malloc(prodnum, sizeof(int)); //allocating memory for array for per thread number stats
+ totalnumprod = malloc(prodnum * sizeof(int)); //allocating memory for array for per thread number stats
  for(int i = 0; i < prodnum; i++){
   totalnumprod[i] = 0; // initialize this to zero so we can use this array thing as counter
  }
- totalnumcons = malloc(consnum, sizeof(int)); // (final summary output)
+ totalnumcons = malloc(consnum * sizeof(int)); // (final summary output)
  for(int i = 0; i < consnum; i++){
   totalnumcons[i] = 0; // initialize this to zero so we can use this array thing as counter
  }
@@ -163,10 +166,10 @@ int main( int argc, char *argv[] ) {  // accepting command args here
 
 
 for(int i = 0; i < prodnum; i++){
- pthread_create(&prodcer[i], NULL, prodthr, NULL);
+ pthread_create(&prodcer[i], NULL, prodthr, (void*)(long)i); //modified :passing thread index
  } //creating producer and consumer threads
 for(int i = 0; i < consnum; i++){
- pthread_create(&consmer[i], NULL, consthr, NULL);
+ pthread_create(&consmer[i], NULL, consthr, (void*)(long)i);
 }
    
    sleep(gsimtime);  // to end the threads 
@@ -179,20 +182,62 @@ for(int i = 0; i < consnum; i++){
  pthread_join(consmer[i], NULL);
   }
 
+//for number of items remaining in buffer:
+int remaining = 0;
+sem_getvalue(&fullsem, &remaining);
+
+// final summary list:
+
+printf("PRODUCER / CONSUMER SIMULATION COMPLETE\n");
+printf("=======================================\n");
+
+printf("Simulation Time: %d\n", gsimtime);
+printf("Maximum Thread Sleep Time: %d\n", gmaxsleep);
+
+printf("Number of Producer Threads: %d\n", prodnum);
+printf("Number of Consumer Threads: %d\n", consnum);
+
+printf("Size of Buffer: %d\n", BUFFER_SIZE);
+printf("Total Number of Items Produced: %d\n", prodtotal);
+
+for (int i = 0; i < prodnum; i++){
+ printf("Thread %d: %d\n", i+1, totalnumprod[i]);    // should be structured like final assignment
+}
+printf("Total Number of Items Consumed: %d\n", constotal);
+
+for (int i = 0; i < consnum; i++){
+ printf("Thread %d: %d\n", i+1, totalnumcons[i]);
+}
+
+printf("Number Of Items Remaining in Buffer: %d\n", remaining);
+printf("Number Of Times Buffer Was Full: %d\n", fbuffertime);
+printf("Number Of Times Buffer Was Empty: %d\n", ebuffertime);
+
+free(totalnumprod);
+free(totalnumcons);
+
+
   return 0;
+
 }
 
 // producer thread function
 void* prodthr(void* argument) {
- unsigned int seed = time(NULL) ^ pthread_self(); // making random seed by combining time with thread id
+ 
+ int id = (int)(long)argument; //unpacking the argument passed
+ uintptr_t tid = (uintptr_t)pthread_self();
+ unsigned int seed = (unsigned int)(time(NULL) ^ tid);  // making random seed by combining time with thread id
  
  while(running){
 
   usleep((rand_r(&seed) % gmaxsleep) * 100000); //sleeping for rand time
   buffer_item item = rand_r(&seed); // making random number for buffer 
   buffer_insert_item(item); // insert function
+  
+  prodtotal++;          // this is where the array for per thread number stat kicks in
+  totalnumprod[id]++;
     
-  printf("Producer %lu writes %d\n", pthread_self(), item);
+  printf("Producer %p writes %d\n", (void*)pthread_self(), item);
   
   if(gbuffshow){
       print_buffer_snapshot();
@@ -205,15 +250,21 @@ void* prodthr(void* argument) {
 }
 //consumer thread function
 void* consthr(void* argument) {
- unsigned int seed = time(NULL) ^ pthread_self(); // making random seed by combining time with thread id
+
+ int id = (int)(long)argument; //unpacking the argument passed
+ uintptr_t tid = (uintptr_t)pthread_self();
+ unsigned int seed = (unsigned int)(time(NULL) ^ tid); // making random seed by combining time with thread id
  
  while(running){
 
   usleep((rand_r(&seed) % gmaxsleep) * 100000); //sleeping for rand time
   buffer_item item; 
   buffer_remove_item(&item); //remove function
+
+  constotal++;          // this is where the array for per thread number stat kicks in
+  totalnumcons[id]++;
     
-  printf("Consumer %lu reads %d\n", pthread_self(), item);
+  printf("Consumer %p reads %d\n", (void*)pthread_self(), item);
   
   // prime checker
   bool prime = true;
