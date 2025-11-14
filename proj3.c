@@ -15,7 +15,7 @@ pthread_mutex_t mutex;
 sem_t empsem;          // for the mutex and semaphore
 sem_t fullsem;
 
-buffer_item bufferarr[BUFFER_SIZE]; //array declaration
+buffer_item bufferarr[BUFFER_SIZE]; //array declaration from buffer.h
 
 int in = 0;  // indexes for the empty and full semaphores
 int out = 0;
@@ -28,9 +28,23 @@ int gmaxsleep;  //global variants of arguments defined in main
 bool gbuffshow;
 bool running = true;
 
+int prodtotal = 0;
+int constotal = 0; // for the final summary list top half
+int fbuffertime = 0;           
+int ebuffertime = 0;                                       //both these for the final summary list
+
+int *totalnumprod; // array for per thread number stats
+int *totalnumcons;
+
 
 bool buffer_insert_item( buffer_item item ) {
 
+int empcount; // check to see how many empty slots
+sem_getvalue(&empsem, &empcount);
+
+if(empcount == 0){ // if full
+  printf("All buffers full. Producer %lu waits.\n", pthread_self());
+}
 sem_wait(&empsem);  //acquiring the mutex and semaphore
 pthread_mutex_lock(&mutex);
 
@@ -45,6 +59,12 @@ sem_post(&fullsem);
 
 bool buffer_remove_item( buffer_item *item ) {
 
+int fullcount; // check to see how many full slots
+sem_getvalue(&fullsem, &fullcount);
+
+if(fullcount == 0){ // if empty
+  printf("All buffers empty. Consumer %lu waits.\n", pthread_self());
+}
 sem_wait(&fullsem);  //acquiring the mutex and semaphore
 pthread_mutex_lock(&mutex);
 
@@ -79,7 +99,7 @@ void print_buffer_snapshot() {
         if (i == out && i == in){
             printf("RW ");
     }
-        else if (i == out){  //printing rw markers
+        else if (i == out){  //printing rw markers as shown from the assignment PDF
             printf("R  ");
     }
         else if (i == in){
@@ -116,11 +136,21 @@ int main( int argc, char *argv[] ) {  // accepting command args here
    exit(1);
  }
  
+ totalnumprod = malloc(prodnum, sizeof(int)); //allocating memory for array for per thread number stats
+ for(int i = 0; i < prodnum; i++){
+  totalnumprod[i] = 0; // initialize this to zero so we can use this array thing as counter
+ }
+ totalnumcons = malloc(consnum, sizeof(int)); // (final summary output)
+ for(int i = 0; i < consnum; i++){
+  totalnumcons[i] = 0; // initialize this to zero so we can use this array thing as counter
+ }
+ 
+ 
  gsimtime = simtime;
  gmaxsleep = maxsleep; //storing these to global variants
  gbuffshow = buffshow;
 
- pthread_t prodcer[prodnum]; // for the producer and consumer threads
+ pthread_t prodcer[prodnum]; // for the producer and consumer threads 
  pthread_t consmer[consnum];
  
  pthread_mutex_init( &mutex, NULL);  //initialization
