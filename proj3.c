@@ -6,8 +6,8 @@
 #include <semaphore.h>
 #include <string.h>
 #include <unistd.h>
-#include <stdint.h>
-
+#include <stdint.h> //included because without this my OpenBSD system would not compile, used this library for uintptr_t, with this also works with the Linux server for school assignment
+// the main issue was Linux treated pthread_t as one data type and my system treated that one differently. With these changes should be more POSIX compliant now...hopefully
 
 char **arg;
 int totalargs;
